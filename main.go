@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"sync/atomic"
 )
@@ -20,6 +22,45 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+func validateChirp(res http.ResponseWriter, req *http.Request) {
+	type requestParams struct {
+		Body string `json:"body"`
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	decoder := json.NewDecoder(req.Body)
+	params := requestParams{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		responseBody := struct{ error string }{error: "Something went wrong"}
+		dat, err := json.Marshal(responseBody)
+		if err != nil {
+			log.Println("Error marshaling")
+		}
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write(dat)
+		return
+	}
+	if len(params.Body) > 140 {
+		responseBody := struct{ error string }{error: "Chirp is to long"}
+		res.WriteHeader(http.StatusBadRequest)
+		dat, err := json.Marshal(responseBody)
+		if err != nil {
+			log.Println("Error marshaling")
+		}
+		res.WriteHeader(http.StatusBadRequest)
+		res.Write(dat)
+		return
+	}
+	responseBody := struct{ valid bool }{valid: true}
+	res.WriteHeader(http.StatusOK)
+	dat, err := json.Marshal(responseBody)
+	if err != nil {
+		log.Println("Error marshaling")
+	}
+	res.Write(dat)
+
+}
 func Healthy(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 	res.WriteHeader(http.StatusOK)
@@ -27,11 +68,11 @@ func Healthy(res http.ResponseWriter, req *http.Request) {
 }
 func (cfg *apiConfig) metrics(res http.ResponseWriter, req *http.Request) {
 	template := []byte(fmt.Sprintf(`<html>
-  <body>
-    <h1>Welcome, Chirpy Admin</h1>
-    <p>Chirpy has been visited %d times!</p>
-  </body>
-</html>`, cfg.fileserverHits.Load()))
+	  <body>
+	    <h1>Welcome, Chirpy Admin</h1>
+	    <p>Chirpy has been visited %d times!</p>
+	  </body>
+	</html>`, cfg.fileserverHits.Load()))
 	res.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	res.WriteHeader(http.StatusOK)
 	// body := []byte("Hits: ")
@@ -50,6 +91,7 @@ func main() {
 	ServeMux.HandleFunc("GET /admin/metrics", apiCfg.metrics)
 	ServeMux.HandleFunc("POST /admin/reset", apiCfg.reset)
 	ServeMux.HandleFunc("GET /api/healthz", Healthy)
+	ServeMux.HandleFunc("POST /api/validate_chirp", validateChirp)
 	ServeMux.Handle("/app/", apiCfg.middlewareMetricsInc(fileServe))
 	srv.Handler = ServeMux
 	srv.Addr = ":8080"
