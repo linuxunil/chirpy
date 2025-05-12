@@ -1,0 +1,6 @@
+[tools]
+go = "latest"
+
+[tasks.build]
+run = "go build -o out && ./out"
+
