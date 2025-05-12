@@ -32,33 +32,36 @@ func validateChirp(res http.ResponseWriter, req *http.Request) {
 	params := requestParams{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		responseBody := struct{ error string }{error: "Something went wrong"}
+		responseBody := struct {
+			Error string `json:"error"`
+		}{Error: "Something went wrong"}
 		dat, err := json.Marshal(responseBody)
 		if err != nil {
 			log.Println("Error marshaling")
 		}
 		res.WriteHeader(http.StatusBadRequest)
 		res.Write(dat)
-		return
-	}
-	if len(params.Body) > 140 {
-		responseBody := struct{ error string }{error: "Chirp is to long"}
+	} else if len(params.Body) > 140 {
+		responseBody := struct {
+			Error string `json:"error"`
+		}{Error: "Chirp is to long"}
 		res.WriteHeader(http.StatusBadRequest)
 		dat, err := json.Marshal(responseBody)
 		if err != nil {
 			log.Println("Error marshaling")
 		}
-		res.WriteHeader(http.StatusBadRequest)
 		res.Write(dat)
-		return
+	} else {
+		responseBody := struct {
+			Valid bool `json:"valid"`
+		}{Valid: true}
+		res.WriteHeader(http.StatusOK)
+		dat, err := json.Marshal(responseBody)
+		if err != nil {
+			log.Println("Error marshaling")
+		}
+		res.Write(dat)
 	}
-	responseBody := struct{ valid bool }{valid: true}
-	res.WriteHeader(http.StatusOK)
-	dat, err := json.Marshal(responseBody)
-	if err != nil {
-		log.Println("Error marshaling")
-	}
-	res.Write(dat)
 
 }
 func Healthy(res http.ResponseWriter, req *http.Request) {
