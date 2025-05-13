@@ -110,24 +110,6 @@ func (cfg *apiConfig) register(res http.ResponseWriter, req *http.Request) {
 	respondWithJSON(res, 201, usr)
 
 }
-func (cfg *apiConfig) chirp(res http.ResponseWriter, req *http.Request) {
-	requestParams := database.CreateChirpParams{UpdatedAt: time.Now(), CreatedAt: time.Now(), ID: uuid.New()}
-
-	decoder := json.NewDecoder(req.Body)
-	err := decoder.Decode(&requestParams)
-	if err != nil {
-		fmt.Println(err)
-	}
-	chrp, err := validateChirp(requestParams)
-	if err != nil {
-		fmt.Println(err)
-	}
-	chrpDB, err := cfg.db.CreateChirp(req.Context(), chrp)
-	if err != nil {
-		fmt.Println(err)
-	}
-	respondWithJSON(res, 201, chrpDB)
-}
 
 func (cfg *apiConfig) reset(res http.ResponseWriter, req *http.Request) {
 	cfg.fileserverHits.Store(0)
@@ -143,7 +125,7 @@ func main() {
 	fileServe := http.StripPrefix("/app", http.FileServer(http.Dir('.')))
 	apiCfg := apiConfig{db: database.New(db)}
 	ServeMux := http.NewServeMux()
-	ServeMux.HandleFunc("POST /api/chirps", apiCfg.chirp)
+	ServeMux.HandleFunc("POST /api/chirps", apiCfg.setChirp)
 	ServeMux.HandleFunc("POST /api/users", apiCfg.register)
 	ServeMux.HandleFunc("GET /admin/metrics", apiCfg.metrics)
 	ServeMux.HandleFunc("POST /admin/reset", apiCfg.reset)
