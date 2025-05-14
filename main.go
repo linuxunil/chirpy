@@ -10,9 +10,7 @@ import (
 	"os"
 	"strings"
 	"sync/atomic"
-	"time"
 
-	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 )
 
@@ -37,6 +35,7 @@ func respondWithError(res http.ResponseWriter, code int, message string) {
 func respondWithJSON(res http.ResponseWriter, code int, payload any) {
 	res.WriteHeader(code)
 	dat, err := json.Marshal(payload)
+
 	if err != nil {
 		respondWithError(res, 400, "Cannot marshal json")
 	}
@@ -62,15 +61,6 @@ func profaneFilter(unclean string, sins []string) string {
 	return strings.Join(clean, " ")
 }
 
-func validateChirp(chrp database.CreateChirpParams) (database.CreateChirpParams, error) {
-
-	if len(chrp.Body) > 140 {
-		return database.CreateChirpParams{}, fmt.Errorf("Chirp to long")
-	}
-	chrp.Body = profaneFilter(chrp.Body, []string{"kerfuffle", "sharbert", "fornax"})
-	return chrp, nil
-
-}
 func Healthy(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/plain; charset=UTF-8")
 	res.WriteHeader(http.StatusOK)
@@ -88,28 +78,6 @@ func (cfg *apiConfig) metrics(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusOK)
 	res.Write(template)
 }
-func (cfg *apiConfig) register(res http.ResponseWriter, req *http.Request) {
-	requestParams := struct {
-		Email string `json:"email"`
-	}{}
-
-	decoder := json.NewDecoder(req.Body)
-	err := decoder.Decode(&requestParams)
-	if err != nil {
-		respondWithError(res, 400, "Couldn't decode json")
-	}
-
-	usr, err := cfg.db.CreateUser(req.Context(), database.CreateUserParams{
-		Email:     requestParams.Email,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		ID:        uuid.New()})
-	if err != nil {
-		fmt.Println(err)
-	}
-	respondWithJSON(res, 201, usr)
-
-}
 
 func (cfg *apiConfig) reset(res http.ResponseWriter, req *http.Request) {
 	cfg.fileserverHits.Store(0)
@@ -125,6 +93,8 @@ func main() {
 	fileServe := http.StripPrefix("/app", http.FileServer(http.Dir('.')))
 	apiCfg := apiConfig{db: database.New(db)}
 	ServeMux := http.NewServeMux()
+	ServeMux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.getChirp)
+	ServeMux.HandleFunc("GET /api/chirps", apiCfg.getChirps)
 	ServeMux.HandleFunc("POST /api/chirps", apiCfg.setChirp)
 	ServeMux.HandleFunc("POST /api/users", apiCfg.register)
 	ServeMux.HandleFunc("GET /admin/metrics", apiCfg.metrics)
