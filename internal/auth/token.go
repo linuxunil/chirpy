@@ -21,7 +21,6 @@ func MakeRefreshToken() (string, error) {
 	b := make([]byte, 32, 32)
 	_, _ = rand.Read(b)
 	token := hex.EncodeToString(b)
-	fmt.Println(token)
 	return token, nil
 }
 func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {

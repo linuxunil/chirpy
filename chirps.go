@@ -43,7 +43,7 @@ func (cfg *apiConfig) getChirps(res http.ResponseWriter, req *http.Request) {
 func (cfg *apiConfig) setChirp(res http.ResponseWriter, req *http.Request) {
 	token, err := auth.GetBearerToken(req.Header)
 	if err != nil {
-		respondWithError(res, 401, fmt.Sprintf("%v ", err))
+		respondWithError(res, 401, fmt.Sprintf("Get Bearer %v ", err))
 		return
 	}
 

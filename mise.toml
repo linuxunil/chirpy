@@ -7,4 +7,8 @@ go = "latest"
 "go:github.com/sqlc-dev/sqlc/cmd/sqlc" = "latest"
 
 [tasks.build]
+depends = ["test"]
 run = "go build -o out && ./out"
+
+[tasks.test]
+run = "go test ./..."
