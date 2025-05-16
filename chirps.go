@@ -1,6 +1,7 @@
 package main
 
 import (
+	"chirpy/internal/auth"
 	"chirpy/internal/database"
 	"encoding/json"
 	"fmt"
@@ -21,7 +22,6 @@ func validateChirp(chrp database.CreateChirpParams) (database.CreateChirpParams,
 }
 func (cfg *apiConfig) getChirp(res http.ResponseWriter, req *http.Request) {
 	chirpID, err := uuid.Parse(req.PathValue("chirpID"))
-	fmt.Println(chirpID)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -41,20 +41,35 @@ func (cfg *apiConfig) getChirps(res http.ResponseWriter, req *http.Request) {
 }
 
 func (cfg *apiConfig) setChirp(res http.ResponseWriter, req *http.Request) {
-	requestParams := database.CreateChirpParams{UpdatedAt: time.Now(), CreatedAt: time.Now(), ID: uuid.New()}
+	token, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		respondWithError(res, 401, fmt.Sprintf("%v ", err))
+		return
+	}
+
+	uid, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		respondWithError(res, 401, fmt.Sprintf("%v ", err))
+		return
+	}
+
+	requestParams := database.CreateChirpParams{UserID: uid, UpdatedAt: time.Now(), CreatedAt: time.Now(), ID: uuid.New()}
 
 	decoder := json.NewDecoder(req.Body)
-	err := decoder.Decode(&requestParams)
+	err = decoder.Decode(&requestParams)
 	if err != nil {
-		fmt.Println(err)
+		respondWithError(res, 401, fmt.Sprintf("%v ", err))
+		return
 	}
 	chrp, err := validateChirp(requestParams)
 	if err != nil {
-		fmt.Println(err)
+		respondWithError(res, 401, fmt.Sprintf("%v ", err))
+		return
 	}
 	chrpDB, err := cfg.db.CreateChirp(req.Context(), chrp)
 	if err != nil {
-		fmt.Println(err)
+		respondWithError(res, 401, fmt.Sprintf("%v ", err))
+		return
 	}
 	respondWithJSON(res, http.StatusCreated, chrpDB)
 }

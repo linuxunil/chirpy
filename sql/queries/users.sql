@@ -1,12 +1,18 @@
 -- name: CreateUser :one
-INSERT INTO users (id, created_at, updated_at, email)
+INSERT INTO users (id, created_at, updated_at, email, hashed_password)
 VALUES (
     $1,
     $2,
     $3,
-    $4
+    $4,
+    $5
 )
 RETURNING *;
+-- name: GetUserByID :one
+select * from users where id = $1;
+-- name: GetUserAndPassByName :one
+select * from users where email = $1;
+-- name: GetUserByName :one
+select id, created_at, updated_at,email from users where email = $1;
 -- name: Reset :exec
-DELETE FROM users;
-DELETE FROM chirps;
+DELETE FROM users chirps;

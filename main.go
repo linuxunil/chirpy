@@ -17,6 +17,7 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
+	secret         string
 }
 
 func respondWithError(res http.ResponseWriter, code int, message string) {
@@ -33,12 +34,11 @@ func respondWithError(res http.ResponseWriter, code int, message string) {
 }
 
 func respondWithJSON(res http.ResponseWriter, code int, payload any) {
-	res.WriteHeader(code)
 	dat, err := json.Marshal(payload)
-
 	if err != nil {
 		respondWithError(res, 400, "Cannot marshal json")
 	}
+	res.WriteHeader(code)
 	res.Write(dat)
 
 }
@@ -85,17 +85,21 @@ func (cfg *apiConfig) reset(res http.ResponseWriter, req *http.Request) {
 }
 func main() {
 	dbURL := os.Getenv("DB_URL")
+	secret := os.Getenv("SECERET")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		return
 	}
 	var srv http.Server
 	fileServe := http.StripPrefix("/app", http.FileServer(http.Dir('.')))
-	apiCfg := apiConfig{db: database.New(db)}
+	apiCfg := apiConfig{db: database.New(db), secret: secret}
 	ServeMux := http.NewServeMux()
 	ServeMux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.getChirp)
 	ServeMux.HandleFunc("GET /api/chirps", apiCfg.getChirps)
 	ServeMux.HandleFunc("POST /api/chirps", apiCfg.setChirp)
+	ServeMux.HandleFunc("POST /api/revoke", apiCfg.revoke)
+	ServeMux.HandleFunc("POST /api/refresh", apiCfg.refresh)
+	ServeMux.HandleFunc("POST /api/login", apiCfg.login)
 	ServeMux.HandleFunc("POST /api/users", apiCfg.register)
 	ServeMux.HandleFunc("GET /admin/metrics", apiCfg.metrics)
 	ServeMux.HandleFunc("POST /admin/reset", apiCfg.reset)
