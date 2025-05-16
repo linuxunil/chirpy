@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -81,18 +82,40 @@ func validateChirp(chrp database.CreateChirpParams) (database.CreateChirpParams,
 
 }
 func (cfg *apiConfig) getChirp(res http.ResponseWriter, req *http.Request) {
-	usrID, err := uuid.Parse(req.PathValue("userID"))
-	feed, err := cfg.db.GetChiprsByUserID(req.Context(), usrID)
+	chirpID, err := uuid.Parse(req.PathValue("chirpID"))
 	if err != nil {
 		fmt.Println(err)
 	}
-	respondWithJSON(res, http.StatusOK, feed)
-
-}
-func (cfg *apiConfig) getChirps(res http.ResponseWriter, req *http.Request) {
-	feed, err := cfg.db.GetChirps(req.Context())
+	chrp, err := cfg.db.GetChirp(req.Context(), chirpID)
 	if err != nil {
 		fmt.Println(err)
+		respondWithError(res, http.StatusNotFound, "Chirp down!")
+	}
+	respondWithJSON(res, http.StatusOK, chrp)
+}
+func (cfg *apiConfig) getChirps(res http.ResponseWriter, req *http.Request) {
+	var feed []database.Chirp
+	var err error
+	if userID := req.URL.Query().Get("author_id"); userID != "" {
+		fmt.Println(userID)
+		userUUID, _ := uuid.Parse(userID)
+		feed, err = cfg.db.GetChiprsByUserID(req.Context(), userUUID)
+		if err != nil {
+			fmt.Println(err)
+		}
+	} else {
+		feed, err = cfg.db.GetChirps(req.Context())
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+	if sortType := req.URL.Query().Get("sort"); sortType != "" {
+		switch sortType {
+		case "asc":
+			sort.Slice(feed, func(i, j int) bool { return feed[i].CreatedAt.Before(feed[j].CreatedAt) })
+		case "desc":
+			sort.Slice(feed, func(i, j int) bool { return feed[i].CreatedAt.After(feed[j].CreatedAt) })
+		}
 	}
 	respondWithJSON(res, http.StatusOK, feed)
 

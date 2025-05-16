@@ -2,7 +2,6 @@ package auth
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -20,8 +19,6 @@ func GetAPIKey(headers http.Header) (string, error) {
 		return "", errors.New("malformed authorization header")
 	}
 
-	fmt.Println("Auth Header: ", authHeader)
-	fmt.Println("Auth Token: ", splitAuth[0], splitAuth[1])
 	return splitAuth[1], nil
 }
 func GetBearerToken(headers http.Header) (string, error) {
@@ -34,8 +31,6 @@ func GetBearerToken(headers http.Header) (string, error) {
 		return "", errors.New("malformed authorization header")
 	}
 
-	fmt.Println("Auth Header: ", authHeader)
-	fmt.Println("Auth Token: ", splitAuth[0], splitAuth[1])
 	return splitAuth[1], nil
 }
 
