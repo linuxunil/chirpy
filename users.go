@@ -79,8 +79,9 @@ func (cfg *apiConfig) login(res http.ResponseWriter, req *http.Request) {
 		Token     string    `json:"token"`
 		Refresh   string    `json:"refresh"`
 	}{ID: usr.ID, CreatedAt: time.Now(), UpdatedAt: time.Now(), Email: usr.Email, Token: token, Refresh: refresh}
+
 	_, err = cfg.db.CreateRefresh(req.Context(),
-		database.CreateRefreshParams{Token: token,
+		database.CreateRefreshParams{Token: refresh,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 			UserID:    usr.ID,
@@ -93,19 +94,31 @@ func (cfg *apiConfig) login(res http.ResponseWriter, req *http.Request) {
 }
 
 func (cfg *apiConfig) refresh(res http.ResponseWriter, req *http.Request) {
-	token, _ := auth.GetBearerToken(req.Header)
-	refresh, err := cfg.db.GetToken(req.Context(), token)
+	tokenRef, _ := auth.GetBearerToken(req.Header)
+	refresh, err := cfg.db.GetToken(req.Context(), tokenRef)
 	if err != nil {
+		fmt.Println(err)
 		respondWithError(res, 401, "Unauthorized")
 	}
+
 	if refresh.ExpiresAt.Before(time.Now()) {
-		cfg.db.RevokeToken(context.Background(), database.RevokeTokenParams{Token: token, RevokedAt: sql.NullTime{Time: time.Now(), Valid: true}})
+		cfg.db.RevokeToken(context.Background(), database.RevokeTokenParams{
+			Token: tokenRef,
+			RevokedAt: sql.NullTime{
+				Time:  time.Now(),
+				Valid: true}})
+
 		respondWithError(res, 401, "Unauthorized")
 		return
 	}
+
+	tokenAuth, err := auth.MakeJWT(refresh.UserID, cfg.secret, 1*time.Hour)
+	if err != nil {
+		respondWithError(res, 401, "Generate JWT")
+	}
 	respondWithJSON(res, 200, struct {
 		Token string `json:"token"`
-	}{Token: token})
+	}{Token: tokenAuth})
 
 }
 func (cfg *apiConfig) revoke(res http.ResponseWriter, req *http.Request) {

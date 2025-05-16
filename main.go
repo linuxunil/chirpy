@@ -21,7 +21,6 @@ type apiConfig struct {
 }
 
 func respondWithError(res http.ResponseWriter, code int, message string) {
-	res.WriteHeader(code)
 	responseBody := struct {
 		Error string `json:"error"`
 	}{Error: message}
@@ -29,6 +28,7 @@ func respondWithError(res http.ResponseWriter, code int, message string) {
 	if err != nil {
 		log.Println("Error marshaling")
 	}
+	res.WriteHeader(code)
 	res.Write(dat)
 
 }
