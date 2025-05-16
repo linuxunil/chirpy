@@ -16,3 +16,10 @@ select * from users where email = $1;
 select id, created_at, updated_at,email from users where email = $1;
 -- name: Reset :exec
 DELETE FROM users chirps;
+-- name: UpdateUser :one
+UPDATE users 
+set email = $2, hashed_password = $3
+where id = $1
+returning *;
+-- name: MarkRed :exec
+update users set is_chirpy_red = true where id = $1;

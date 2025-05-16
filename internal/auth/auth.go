@@ -10,6 +10,20 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+func GetAPIKey(headers http.Header) (string, error) {
+	authHeader := headers.Get("Authorization")
+	if authHeader == "" {
+		return "", errors.New("No authorization header")
+	}
+	splitAuth := strings.Split(authHeader, " ")
+	if len(splitAuth) < 2 || splitAuth[0] != "ApiKey" {
+		return "", errors.New("malformed authorization header")
+	}
+
+	fmt.Println("Auth Header: ", authHeader)
+	fmt.Println("Auth Token: ", splitAuth[0], splitAuth[1])
+	return splitAuth[1], nil
+}
 func GetBearerToken(headers http.Header) (string, error) {
 	authHeader := headers.Get("Authorization")
 	if authHeader == "" {
